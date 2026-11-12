@@ -4,11 +4,15 @@ Wir benutzen SQLite: Die ganze Datenbank ist eine einzige Datei neben der
 Anwendung. Kein Server, keine Zugangsdaten, nichts zu installieren.
 """
 
+import os
 import secrets
 import sqlite3
 from pathlib import Path
 
-DATENBANK_DATEI = Path(__file__).parent.parent / "gruppenkasse.db"
+# Beim Entwickeln liegt die Datenbank neben dem Projekt. Im Container liegt sie
+# in einem Verzeichnis, das den Neustart überlebt — deshalb die Umgebungsvariable.
+VERZEICHNIS = Path(os.getenv("DATENBANK_VERZEICHNIS", Path(__file__).parent.parent))
+DATENBANK_DATEI = VERZEICHNIS / "gruppenkasse.db"
 
 # Das Datenmodell:
 #

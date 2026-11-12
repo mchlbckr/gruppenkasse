@@ -42,6 +42,16 @@ Dann <http://127.0.0.1:8000> öffnen.
 pytest
 ```
 
+## Im Container
+
+```bash
+docker build -t gruppenkasse .
+```
+
+```bash
+docker run -p 8000:8000 -v gruppenkasse-daten:/daten gruppenkasse
+```
+
 ## Spezifikation
 
 Was die Anwendung können soll, steht in [SPEC.md](SPEC.md). Die Regeln, nach denen der

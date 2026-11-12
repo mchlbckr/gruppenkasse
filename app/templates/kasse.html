@@ -16,9 +16,9 @@
     <div class="zeile">
       <span>{{ person.name }}</span>
       {% if salden[person.id] >= 0 %}
-        <span class="plus">+ {{ "%.2f"|format(salden[person.id] / 100) }} €</span>
+        <span class="plus">+ {{ salden[person.id]|euro }}</span>
       {% else %}
-        <span class="minus">− {{ "%.2f"|format(-salden[person.id] / 100) }} €</span>
+        <span class="minus">{{ salden[person.id]|euro }}</span>
       {% endif %}
     </div>
   {% endfor %}
@@ -40,14 +40,30 @@
         </span>
       </span>
       <span>
-        {{ "%.2f"|format(ausgabe.cent / 100) }} €
+        {{ ausgabe.cent|euro }}
         {% if ausgabe.original_waehrung %}
-          <span class="klein">({{ "%.2f"|format(ausgabe.original_cent / 100) }}
+          <span class="klein">({{ "%.2f"|format(ausgabe.original_cent / 100)|replace(".", ",") }}
             {{ ausgabe.original_waehrung }})</span>
         {% endif %}
       </span>
     </div>
   {% endfor %}
+
+  <h2>Ausgleich</h2>
+  {% if not ausgleich %}
+    <p class="klein">Alles ausgeglichen.</p>
+  {% else %}
+    <p class="klein">
+      {{ ausgleich|length }} Überweisung{{ "en" if ausgleich|length != 1 else "" }},
+      dann sind alle bei null.
+    </p>
+    {% for von, nach, betrag in ausgleich %}
+      <div class="zeile ausgleich">
+        <span>{{ namen[von] }} → {{ namen[nach] }}</span>
+        <span>{{ betrag|euro }}</span>
+      </div>
+    {% endfor %}
+  {% endif %}
 
   <h2>Ausgabe hinzufügen</h2>
   <form method="post" action="/k/{{ kasse.token }}/ausgabe">

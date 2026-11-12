@@ -52,3 +52,48 @@ def berechne_salden(personen_ids, ausgaben):
             salden[person_id] -= anteile[position]
 
     return salden
+
+
+def berechne_ausgleich(salden):
+    """Schlägt Überweisungen vor, die alle Salden auf null bringen.
+
+    Regel: Wer am meisten schuldet, überweist an die Person, die am meisten
+    bekommt — und zwar den kleineren der beiden Beträge. Das wiederholt sich,
+    bis niemand mehr etwas schuldet.
+
+    Das Ergebnis ist nicht immer die kleinstmögliche Anzahl Überweisungen,
+    aber immer eine kleine. Dafür lässt es sich in zwei Sätzen erklären, und
+    genau das ist hier wichtiger.
+
+    Gibt eine Liste von (von_person, an_person, cent) zurück.
+    """
+    # Kopien, damit die übergebenen Salden unverändert bleiben.
+    schuldner = sorted(
+        [(person, -saldo) for person, saldo in salden.items() if saldo < 0],
+        key=lambda eintrag: eintrag[1],
+        reverse=True,
+    )
+    glaeubiger = sorted(
+        [(person, saldo) for person, saldo in salden.items() if saldo > 0],
+        key=lambda eintrag: eintrag[1],
+        reverse=True,
+    )
+
+    ueberweisungen = []
+
+    while schuldner and glaeubiger:
+        schuldner_person, schuld = schuldner.pop(0)
+        glaeubiger_person, guthaben = glaeubiger.pop(0)
+
+        betrag = min(schuld, guthaben)
+        ueberweisungen.append((schuldner_person, glaeubiger_person, betrag))
+
+        # Was übrig bleibt, kommt zurück in die Liste — an die richtige Stelle.
+        if schuld > betrag:
+            schuldner.append((schuldner_person, schuld - betrag))
+            schuldner.sort(key=lambda eintrag: eintrag[1], reverse=True)
+        if guthaben > betrag:
+            glaeubiger.append((glaeubiger_person, guthaben - betrag))
+            glaeubiger.sort(key=lambda eintrag: eintrag[1], reverse=True)
+
+    return ueberweisungen

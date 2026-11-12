@@ -12,13 +12,24 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import datenbank, wechselkurse
-from app.regeln import berechne_salden
+from app.regeln import berechne_ausgleich, berechne_salden
 
 HIER = Path(__file__).parent
 
 app = FastAPI(title="Gruppenkasse")
 app.mount("/static", StaticFiles(directory=HIER / "static"), name="static")
 templates = Jinja2Templates(directory=HIER / "templates")
+
+
+def euro(cent):
+    """Formatiert Cent als deutschen Geldbetrag: 123456 -> "1.234,56 €"."""
+    vorzeichen = "−" if cent < 0 else ""
+    ganze, rest = divmod(abs(int(cent)), 100)
+    mit_punkten = f"{ganze:,}".replace(",", ".")
+    return f"{vorzeichen}{mit_punkten},{rest:02d} €"
+
+
+templates.env.filters["euro"] = euro
 
 
 @app.on_event("startup")
@@ -59,6 +70,7 @@ def kasse_anzeigen(request: Request, token: str):
     namen = {person["id"]: person["name"] for person in personen}
 
     salden = berechne_salden([person["id"] for person in personen], ausgaben)
+    ausgleich = berechne_ausgleich(salden)
 
     return templates.TemplateResponse(
         "kasse.html",
@@ -69,6 +81,7 @@ def kasse_anzeigen(request: Request, token: str):
             "namen": namen,
             "ausgaben": ausgaben,
             "salden": salden,
+            "ausgleich": ausgleich,
         },
     )
 
