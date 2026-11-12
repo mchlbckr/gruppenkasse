@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ kassenname }}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 0 auto;
+           padding: 16px; color: #1d1d1b; }
+    h1 { color: #0014a0; font-size: 22px; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
+         color: #868686; margin-top: 28px; }
+    .zeile { display: flex; justify-content: space-between; padding: 6px 0;
+             border-bottom: 1px solid #eee; }
+    .plus { color: #00965a; font-weight: 600; }
+    .minus { color: #eb0041; font-weight: 600; }
+    .klein { color: #868686; font-size: 13px; }
+    form { margin-top: 10px; display: grid; gap: 8px; }
+    input, select, button { font: inherit; padding: 9px; border: 1px solid #ccc;
+                            border-radius: 6px; }
+    button { background: #0014a0; color: #fff; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <h1>{{ kassenname }}</h1>
+  <p class="klein">{{ personen|length }} Personen · {{ ausgaben|length }} Ausgaben</p>
+
+  <h2>Salden</h2>
+  {% for person, saldo in salden.items() %}
+    <div class="zeile">
+      <span>{{ person }}</span>
+      {% if saldo >= 0 %}
+        <span class="plus">+ {{ "%.2f"|format(saldo / 100) }} €</span>
+      {% else %}
+        <span class="minus">− {{ "%.2f"|format(-saldo / 100) }} €</span>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <h2>Ausgaben</h2>
+  {% for ausgabe in ausgaben %}
+    <div class="zeile">
+      <span>
+        {{ ausgabe.titel }}
+        <span class="klein">· {{ ausgabe.bezahlt_von }} ·
+          {% if ausgabe.beteiligte|length == personen|length %}
+            alle
+          {% else %}
+            {{ ausgabe.beteiligte|length }} von {{ personen|length }}
+          {% endif %}
+        </span>
+      </span>
+      <span>{{ "%.2f"|format(ausgabe.cent / 100) }} €</span>
+    </div>
+  {% endfor %}
+
+  <h2>Ausgabe hinzufügen</h2>
+  <form method="post" action="/ausgabe">
+    <input name="titel" placeholder="Wofür?" required>
+    <input name="betrag" placeholder="Betrag, z. B. 12,50" required>
+    <select name="bezahlt_von">
+      {% for person in personen %}
+        <option value="{{ person }}">{{ person }} hat bezahlt</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Eintragen</button>
+  </form>
+
+</body>
+</html>
