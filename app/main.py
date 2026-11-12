@@ -1,103 +1,97 @@
-"""Gruppenkasse — erste lauffähige Version.
+"""Gruppenkasse — die Seiten der Anwendung.
 
-Stand Sitzung 3: Alles liegt noch im Arbeitsspeicher. Wird die Anwendung neu
-gestartet, sind die Ausgaben weg. Das ist Absicht — die Datenbank kommt in
-Sitzung 4.
+Stand Sitzung 4: Die Daten liegen jetzt in einer SQLite-Datenbank. Es gibt
+beliebig viele Kassen, jede erreichbar über ihren eigenen Link.
 """
 
-from fastapi import FastAPI, Form, Request
+from pathlib import Path
+
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app import datenbank
+from app.regeln import berechne_salden
+
+HIER = Path(__file__).parent
+
 app = FastAPI(title="Gruppenkasse")
-templates = Jinja2Templates(directory="app/templates")
-
-# --- Die Daten der Kasse -----------------------------------------------------
-# Noch fest eingetragen. Eine Kasse, feste Teilnehmende.
-
-KASSENNAME = "WG Hansaring"
-PERSONEN = ["Lena", "Tim", "Jonas", "Mira", "Ben"]
-
-# Jede Ausgabe ist ein Dictionary. Die Liste wächst, während die Anwendung läuft.
-ausgaben = [
-    {"titel": "Großeinkauf", "cent": 8640, "bezahlt_von": "Tim", "beteiligte": PERSONEN},
-    {"titel": "Kino", "cent": 3600, "bezahlt_von": "Mira", "beteiligte": ["Mira", "Lena", "Ben"]},
-]
+app.mount("/static", StaticFiles(directory=HIER / "static"), name="static")
+templates = Jinja2Templates(directory=HIER / "templates")
 
 
-# --- Die fachlichen Regeln ---------------------------------------------------
-
-def teile_auf(cent, anzahl_beteiligte):
-    """Teilt einen Betrag gleichmäßig auf.
-
-    Regel: Geht der Betrag nicht glatt auf, bekommen die ersten Beteiligten
-    den zusätzlichen Cent. Die Summe der Anteile ergibt immer genau den Betrag.
-    """
-    grundanteil = cent // anzahl_beteiligte
-    rest = cent - grundanteil * anzahl_beteiligte
-
-    anteile = []
-    for position in range(anzahl_beteiligte):
-        if position < rest:
-            anteile.append(grundanteil + 1)
-        else:
-            anteile.append(grundanteil)
-    return anteile
+@app.on_event("startup")
+def beim_start():
+    datenbank.initialisiere()
 
 
-def berechne_salden(personen, alle_ausgaben):
-    """Saldo je Person: was sie bezahlt hat, minus ihre Anteile.
-
-    Ein positiver Saldo heißt: Diese Person hat mehr ausgelegt, als sie
-    verbraucht hat, bekommt also Geld zurück.
-    """
-    salden = {}
-    for person in personen:
-        salden[person] = 0
-
-    for ausgabe in alle_ausgaben:
-        salden[ausgabe["bezahlt_von"]] += ausgabe["cent"]
-
-        anteile = teile_auf(ausgabe["cent"], len(ausgabe["beteiligte"]))
-        for position, person in enumerate(ausgabe["beteiligte"]):
-            salden[person] -= anteile[position]
-
-    return salden
-
-
-# --- Die Seiten --------------------------------------------------------------
+# --- Startseite: eine Kasse anlegen ------------------------------------------
 
 @app.get("/")
-def kasse_anzeigen(request: Request):
+def startseite(request: Request):
+    return templates.TemplateResponse("start.html", {"request": request})
+
+
+@app.post("/kasse")
+def kasse_anlegen(name: str = Form(...), personen: str = Form(...)):
+    # Die Namen kommen als eine Zeile: "Lena, Tim, Jonas"
+    namen = [teil.strip() for teil in personen.split(",") if teil.strip()]
+    if len(namen) < 2:
+        raise HTTPException(status_code=400, detail="Mindestens zwei Personen")
+
+    token = datenbank.lege_kasse_an(name, namen)
+    return RedirectResponse(f"/k/{token}", status_code=303)
+
+
+# --- Die Kasse selbst --------------------------------------------------------
+
+@app.get("/k/{token}")
+def kasse_anzeigen(request: Request, token: str):
+    kasse = datenbank.hole_kasse(token)
+    if kasse is None:
+        raise HTTPException(status_code=404, detail="Diese Kasse gibt es nicht")
+
+    personen = datenbank.hole_personen(kasse["id"])
+    ausgaben = datenbank.hole_ausgaben(kasse["id"])
+
+    # Für die Anzeige brauchen wir zu jeder Person-ID den Namen.
+    namen = {person["id"]: person["name"] for person in personen}
+
+    salden = berechne_salden([person["id"] for person in personen], ausgaben)
+
     return templates.TemplateResponse(
         "kasse.html",
         {
             "request": request,
-            "kassenname": KASSENNAME,
-            "personen": PERSONEN,
+            "kasse": kasse,
+            "personen": personen,
+            "namen": namen,
             "ausgaben": ausgaben,
-            "salden": berechne_salden(PERSONEN, ausgaben),
+            "salden": salden,
         },
     )
 
 
-@app.post("/ausgabe")
-def ausgabe_hinzufuegen(
-    titel: str = Form(...),
-    betrag: str = Form(...),
-    bezahlt_von: str = Form(...),
-):
-    # Der Betrag kommt als Text aus dem Formular, etwa "12,50".
-    # Intern rechnen wir in ganzen Cent — niemals mit Kommazahlen.
-    betrag = betrag.replace(",", ".")
+@app.post("/k/{token}/ausgabe")
+async def ausgabe_hinzufuegen(request: Request, token: str):
+    kasse = datenbank.hole_kasse(token)
+    if kasse is None:
+        raise HTTPException(status_code=404, detail="Diese Kasse gibt es nicht")
+
+    formular = await request.form()
+
+    titel = formular["titel"]
+    bezahlt_von = int(formular["bezahlt_von"])
+
+    # Der Betrag kommt als Text, etwa "12,50". Intern rechnen wir in Cent.
+    betrag = str(formular["betrag"]).replace(",", ".")
     cent = round(float(betrag) * 100)
 
-    ausgaben.append(
-        {
-            "titel": titel,
-            "cent": cent,
-            "bezahlt_von": bezahlt_von,
-            "beteiligte": PERSONEN,
-        }
-    )
-    return RedirectResponse("/", status_code=303)
+    # Angehakte Personen. Ist niemand angehakt, sind alle beteiligt.
+    beteiligte = [int(wert) for wert in formular.getlist("beteiligte")]
+    if not beteiligte:
+        beteiligte = [person["id"] for person in datenbank.hole_personen(kasse["id"])]
+
+    datenbank.lege_ausgabe_an(kasse["id"], titel, cent, bezahlt_von, beteiligte)
+    return RedirectResponse(f"/k/{token}", status_code=303)

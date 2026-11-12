@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gruppenkasse</title>
+  <link rel="stylesheet" href="/static/stil.css">
+</head>
+<body>
+
+  <h1>Gruppenkasse</h1>
+  <p class="klein">
+    Gemeinsame Ausgaben erfassen und am Ende ausrechnen, wer wem was schuldet.
+    Kasse anlegen, Link teilen, fertig.
+  </p>
+
+  <h2>Neue Kasse</h2>
+  <form method="post" action="/kasse">
+    <input name="name" placeholder="Name der Kasse, z. B. WG Hansaring" required>
+    <input name="personen" placeholder="Vornamen, durch Komma getrennt" required>
+    <button type="submit">Kasse anlegen</button>
+  </form>
+
+  <p class="klein">
+    Bitte nur Vornamen oder Spitznamen eintragen — keine Mailadressen, keine Kontodaten.
+  </p>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+:root {
+  --blau: #0014a0;
+  --gruen: #00965a;
+  --rot: #eb0041;
+  --grau: #868686;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+  color: #1d1d1b;
+  line-height: 1.5;
+}
+
+h1 { color: var(--blau); font-size: 22px; margin-bottom: 4px; }
+
+h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--grau);
+  margin-top: 28px;
+  margin-bottom: 8px;
+}
+
+.zeile {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.plus { color: var(--gruen); font-weight: 600; white-space: nowrap; }
+.minus { color: var(--rot); font-weight: 600; white-space: nowrap; }
+.klein { color: var(--grau); font-size: 13px; }
+
+form { margin-top: 10px; display: grid; gap: 8px; }
+
+input, select, button {
+  font: inherit;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 100%;
+}
+
+button {
+  background: var(--blau);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover { background: #000f7a; }
+
+fieldset {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+legend { font-size: 12px; color: var(--grau); padding: 0 4px; }
+
+.beteiligte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.beteiligte label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+}
+
+.beteiligte input { width: auto; }
+
+.teilen {
+  background: #f2f5ff;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  word-break: break-all;
+}
