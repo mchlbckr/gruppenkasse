@@ -41,7 +41,10 @@ CREATE TABLE IF NOT EXISTS ausgaben (
     kasse_id             INTEGER NOT NULL REFERENCES kassen(id),
     titel                TEXT NOT NULL,
     cent                 INTEGER NOT NULL,
-    bezahlt_von          INTEGER NOT NULL REFERENCES personen(id)
+    bezahlt_von          INTEGER NOT NULL REFERENCES personen(id),
+    original_waehrung    TEXT,
+    original_cent        INTEGER,
+    kurs                 REAL
 );
 
 CREATE TABLE IF NOT EXISTS beteiligungen (
@@ -63,9 +66,36 @@ def verbindung():
 
 
 def initialisiere():
-    """Legt die Tabellen an, falls sie noch nicht existieren."""
+    """Legt die Tabellen an, falls sie noch nicht existieren, und wandert mit."""
     with verbindung() as db:
         db.executescript(SCHEMA)
+        _wandere_mit(db)
+
+
+# Spalten, die nach dem ersten Entwurf dazugekommen sind. SQLite kann Spalten
+# nachträglich anfügen, aber nicht "wenn noch nicht vorhanden" — deshalb erst
+# nachsehen, was schon da ist.
+NACHTRAEGLICHE_SPALTEN = [
+    ("ausgaben", "original_waehrung", "TEXT"),
+    ("ausgaben", "original_cent", "INTEGER"),
+    ("ausgaben", "kurs", "REAL"),
+]
+
+
+def _wandere_mit(db):
+    """Ergänzt Spalten, die in älteren Datenbankdateien noch fehlen.
+
+    Das ist eine Migration. Ohne sie bricht die Anwendung bei allen, die die
+    Datenbank schon vor der Änderung angelegt haben — und das sind nach
+    Sitzung 4 alle.
+    """
+    for tabelle, spalte, typ in NACHTRAEGLICHE_SPALTEN:
+        vorhandene = [
+            zeile["name"]
+            for zeile in db.execute(f"PRAGMA table_info({tabelle})").fetchall()
+        ]
+        if spalte not in vorhandene:
+            db.execute(f"ALTER TABLE {tabelle} ADD COLUMN {spalte} {typ}")
 
 
 # --- Kassen ------------------------------------------------------------------
@@ -109,12 +139,31 @@ def hole_personen(kasse_id):
 
 # --- Ausgaben ----------------------------------------------------------------
 
-def lege_ausgabe_an(kasse_id, titel, cent, bezahlt_von, beteiligte_ids):
+def lege_ausgabe_an(
+    kasse_id,
+    titel,
+    cent,
+    bezahlt_von,
+    beteiligte_ids,
+    original_waehrung=None,
+    original_cent=None,
+    kurs=None,
+):
+    """Legt eine Ausgabe an.
+
+    `cent` ist immer der Betrag in der Währung der Kasse. War die Ausgabe in
+    einer anderen Währung, stehen Originalbetrag, Originalwährung und der
+    verwendete Kurs zusätzlich daneben — damit später nachvollziehbar ist,
+    wie gerechnet wurde.
+    """
     with verbindung() as db:
         zeiger = db.execute(
-            "INSERT INTO ausgaben (kasse_id, titel, cent, bezahlt_von)"
-            " VALUES (?, ?, ?, ?)",
-            (kasse_id, titel, cent, bezahlt_von),
+            "INSERT INTO ausgaben"
+            " (kasse_id, titel, cent, bezahlt_von, original_waehrung,"
+            "  original_cent, kurs)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (kasse_id, titel, cent, bezahlt_von, original_waehrung,
+             original_cent, kurs),
         )
         ausgabe_id = zeiger.lastrowid
 
@@ -154,6 +203,9 @@ def hole_ausgaben(kasse_id):
                     "cent": ausgabe["cent"],
                     "bezahlt_von": ausgabe["bezahlt_von"],
                     "bezahlt_von_name": ausgabe["bezahlt_von_name"],
+                    "original_waehrung": ausgabe["original_waehrung"],
+                    "original_cent": ausgabe["original_cent"],
+                    "kurs": ausgabe["kurs"],
                     "beteiligte": [zeile["person_id"] for zeile in beteiligte],
                 }
             )

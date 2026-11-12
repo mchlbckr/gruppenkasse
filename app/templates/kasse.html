@@ -39,14 +39,31 @@
           {% endif %}
         </span>
       </span>
-      <span>{{ "%.2f"|format(ausgabe.cent / 100) }} €</span>
+      <span>
+        {{ "%.2f"|format(ausgabe.cent / 100) }} €
+        {% if ausgabe.original_waehrung %}
+          <span class="klein">({{ "%.2f"|format(ausgabe.original_cent / 100) }}
+            {{ ausgabe.original_waehrung }})</span>
+        {% endif %}
+      </span>
     </div>
   {% endfor %}
 
   <h2>Ausgabe hinzufügen</h2>
   <form method="post" action="/k/{{ kasse.token }}/ausgabe">
     <input name="titel" placeholder="Wofür?" required>
-    <input name="betrag" placeholder="Betrag, z. B. 12,50" required>
+
+    <div class="betragszeile">
+      <input name="betrag" placeholder="Betrag, z. B. 12,50" required>
+      <select name="waehrung">
+        <option value="{{ kasse.waehrung }}">{{ kasse.waehrung }}</option>
+        {% for waehrung in ["CHF", "GBP", "USD", "DKK", "SEK", "NOK", "PLN", "CZK"] %}
+          {% if waehrung != kasse.waehrung %}
+            <option value="{{ waehrung }}">{{ waehrung }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </div>
 
     <select name="bezahlt_von">
       {% for person in personen %}

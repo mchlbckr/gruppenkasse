@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import datenbank
+from app import datenbank, wechselkurse
 from app.regeln import berechne_salden
 
 HIER = Path(__file__).parent
@@ -86,12 +86,81 @@ async def ausgabe_hinzufuegen(request: Request, token: str):
 
     # Der Betrag kommt als Text, etwa "12,50". Intern rechnen wir in Cent.
     betrag = str(formular["betrag"]).replace(",", ".")
-    cent = round(float(betrag) * 100)
+    eingegebene_cent = round(float(betrag) * 100)
+
+    waehrung = str(formular.get("waehrung", kasse["waehrung"])).upper()
+
+    # In der Währung der Kasse? Dann ist nichts umzurechnen.
+    if waehrung == kasse["waehrung"]:
+        cent = eingegebene_cent
+        original_waehrung = None
+        original_cent = None
+        kurs = None
+    else:
+        try:
+            kurs = wechselkurse.hole_kurs(waehrung, kasse["waehrung"])
+        except wechselkurse.KursNichtVerfuegbar as fehler:
+            # Wichtig: Der Fehler des fremden Dienstes darf unsere Anwendung
+            # nicht abstürzen lassen. Die Person soll erfahren, was los ist.
+            raise HTTPException(status_code=502, detail=str(fehler))
+
+        cent = round(eingegebene_cent * kurs)
+        original_waehrung = waehrung
+        original_cent = eingegebene_cent
 
     # Angehakte Personen. Ist niemand angehakt, sind alle beteiligt.
     beteiligte = [int(wert) for wert in formular.getlist("beteiligte")]
     if not beteiligte:
         beteiligte = [person["id"] for person in datenbank.hole_personen(kasse["id"])]
 
-    datenbank.lege_ausgabe_an(kasse["id"], titel, cent, bezahlt_von, beteiligte)
+    datenbank.lege_ausgabe_an(
+        kasse["id"],
+        titel,
+        cent,
+        bezahlt_von,
+        beteiligte,
+        original_waehrung=original_waehrung,
+        original_cent=original_cent,
+        kurs=kurs,
+    )
     return RedirectResponse(f"/k/{token}", status_code=303)
+
+
+# --- Die eigene Schnittstelle ------------------------------------------------
+# Dieselben Daten, aber als JSON statt als Seite. Damit kann ein anderes
+# Programm die Kasse auslesen. Die Dokumentation dazu erzeugt FastAPI selbst,
+# zu sehen unter /docs.
+
+@app.get("/api/k/{token}", tags=["Kasse"])
+def kasse_als_json(token: str):
+    """Gibt eine Kasse mit Personen, Ausgaben und Salden zurück."""
+    kasse = datenbank.hole_kasse(token)
+    if kasse is None:
+        raise HTTPException(status_code=404, detail="Diese Kasse gibt es nicht")
+
+    personen = datenbank.hole_personen(kasse["id"])
+    ausgaben = datenbank.hole_ausgaben(kasse["id"])
+    salden = berechne_salden([person["id"] for person in personen], ausgaben)
+
+    return {
+        "name": kasse["name"],
+        "waehrung": kasse["waehrung"],
+        "personen": [
+            {
+                "id": person["id"],
+                "name": person["name"],
+                "saldo_cent": salden[person["id"]],
+            }
+            for person in personen
+        ],
+        "ausgaben": ausgaben,
+    }
+
+
+@app.get("/api/kurs", tags=["Kurse"])
+def kurs_abfragen(von: str, nach: str):
+    """Aktueller Umrechnungskurs zwischen zwei Währungen."""
+    try:
+        return {"von": von.upper(), "nach": nach.upper(), "kurs": wechselkurse.hole_kurs(von, nach)}
+    except wechselkurse.KursNichtVerfuegbar as fehler:
+        raise HTTPException(status_code=502, detail=str(fehler))
