@@ -17,6 +17,8 @@ Die Commit-Historie folgt dem Verlauf der Sitzungen 2 bis 6; zu jeder Sitzung gi
 Wer den Anschluss verloren hat, steigt am Anfang der nächsten Sitzung wieder ein:
 
 ```bash
+git clone https://github.com/mchlbckr/gruppenkasse.git
+cd gruppenkasse
 git checkout sitzung-04
 ```
 
