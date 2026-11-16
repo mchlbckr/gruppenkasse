@@ -1,0 +1,35 @@
+# Ein Compose-File beschreibt, wie der Container laufen soll — welcher Port,
+# welche Daten, welche Umgebungsvariablen. Ohne diese Datei müsste man sich
+# bei jedem Start eine lange "docker run"-Zeile merken.
+
+services:
+  gruppenkasse:
+    build: .
+    image: gruppenkasse:aktuell
+
+    # Nach einem Neustart des Servers kommt die Anwendung von allein wieder
+    # hoch. Ohne diese Zeile steht sie nach dem nächsten Update still.
+    restart: unless-stopped
+
+    # Links der Port auf dem Server, rechts der Port im Container.
+    ports:
+      - "8000:8000"
+
+    environment:
+      # Muss zum VOLUME im Dockerfile passen.
+      DATENBANK_VERZEICHNIS: /daten
+      # Wird aus der Datei .env gelesen, falls vorhanden. Der Schlüssel ist
+      # optional: ohne ihn nutzt die Anwendung den kostenfreien Dienst.
+      EXCHANGE_API_KEY: ${EXCHANGE_API_KEY:-}
+
+    # Der benannte Speicher liegt ausserhalb des Containers. Genau deshalb
+    # ueberleben die Daten ein neues Deployment.
+    volumes:
+      - daten:/daten
+
+    # Auf einer geteilten Maschine verhindert das, dass ein einzelner
+    # Container den ganzen Server lahmlegt.
+    mem_limit: 512m
+
+volumes:
+  daten:
