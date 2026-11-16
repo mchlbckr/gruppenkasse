@@ -57,4 +57,4 @@ docker run -p 8000:8000 -v gruppenkasse-daten:/daten gruppenkasse
 ## Spezifikation
 
 Was die Anwendung können soll, steht in [SPEC.md](SPEC.md). Die Regeln, nach denen der
-KI-Agent in diesem Projekt arbeitet, in [CLAUDE.md](CLAUDE.md).
+KI-Agent in diesem Projekt arbeitet, in [AGENTS.md](AGENTS.md).
