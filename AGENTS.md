@@ -1,6 +1,6 @@
 # Projektregeln für den Agenten
 
-Dieses Projekt wird in der Vorlesung *Vibe Coding* gemeinsam entwickelt. Es ist Lehrmaterial:
+Dieses Projekt wird in der Vorlesung *Agentic Engineering* gemeinsam entwickelt. Es ist Lehrmaterial:
 Der Code muss von Leuten gelesen werden können, die gerade erst anfangen.
 
 ## Sprache

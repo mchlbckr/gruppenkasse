@@ -1,6 +1,6 @@
 # Gruppenkasse — Spezifikation
 
-Gemeinsames Projekt aus Durchgang 1 der Vorlesung *Vibe Coding*.
+Gemeinsames Projekt aus Durchgang 1 der Vorlesung *Agentic Engineering*.
 In Sitzung 2 im Kurs erarbeitet.
 
 ## Problem

@@ -3,7 +3,7 @@
 Gemeinsame Ausgaben in einer WG oder auf Reisen erfassen und am Ende ausrechnen, wer wem was
 schuldet. Kasse anlegen, Link teilen, fertig — ohne Anmeldung.
 
-Dies ist die **Referenz-Anwendung** aus Durchgang 1 der Vorlesung *Vibe Coding* an der FH Münster.
+Dies ist die **Referenz-Anwendung** aus Durchgang 1 der Vorlesung *Agentic Engineering* an der FH Münster.
 Die Commit-Historie folgt dem Verlauf der Sitzungen 2 bis 6; zu jeder Sitzung gibt es einen Tag.
 
 | Tag | Stand am Ende von |
